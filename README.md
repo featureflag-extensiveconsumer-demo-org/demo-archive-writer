@@ -9,21 +9,28 @@ state can be watched without shell access to the host.
 
 ## Archive destinations
 
-| Destination | Status |
-| --- | --- |
-| `orders-archive-eu` (object storage) | current |
-| `arch-array-01` (disk array, old data centre) | decommissioned |
+| Destination | Site | Status |
+| --- | --- | --- |
+| `orders-archive-eu` (object storage) | eu | current |
+| `arch-array-07` (disk array) | dc-eu-2 | online, failover target |
+| `arch-array-01` (disk array) | dc-legacy-1 | retired with the site |
 
 The disk array is what this service was written against on day one. The migration to object storage
-shipped behind a flag, the rollout finished, and the array was later decommissioned with the data
-centre it lived in. The code that chooses between them is still in `src/writer.js`.
+shipped behind a flag, the rollout finished, and `arch-array-01` was later retired with the data
+centre it stood in. A second rollout moved the disk path onto `arch-array-07` so that failing back
+off object storage stays possible. The code that chooses between all three is in `src/writer.js`.
 
 ## Feature flags
 
 | Key | Decides | Fallback in code |
 | --- | --- | --- |
-| `demo-order-archive-object-storage` | object storage instead of the disk array | `false` |
-| `demo-archive-array-failover` | secondary array failover, read only on the disk-array path | `false` |
+| `demo-order-archive-object-storage` | object storage instead of the disk path | `false` |
+| `demo-archive-array-failover` | the disk path uses `arch-array-07` instead of `arch-array-01` | `false` |
+
+The second flag is read **only** on the disk path, so while object storage is in use it is never
+evaluated at all. Its fallback is `false`, meaning "failover was never rolled out", which sends the
+writer to the retired array. Both rollouts are long finished, so neither fallback describes the
+world the service actually runs in.
 
 The fallback is the value each call site uses when the flag cannot be evaluated, which is also what
 it receives if the flag no longer exists. Both fallbacks are `false`, chosen when the disk array was
@@ -45,7 +52,9 @@ python3 -m http.server 8731
 
 Then open <http://127.0.0.1:8731/>.
 
-Append `?flag=<key>` to point the archive decision at a different flag key without a redeploy.
+Append `?flag=<key>` to point the archive decision at a different flag key without a redeploy, and
+`?failover=<key>` to do the same for the failover decision. Overriding the archive flag without
+naming a failover flag leaves failover unconfigured, and an unconfigured failover is never looked up.
 
 ## Layout
 

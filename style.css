@@ -6,6 +6,8 @@
   --edge: #2a3642;
   --ok: #3ddc84;
   --ok-ground: #12301f;
+  --warn: #ffb020;
+  --warn-ground: #3a2a08;
   --bad: #ff4d4f;
   --bad-ground: #3a0f11;
 }
@@ -106,6 +108,14 @@ body {
   border-color: var(--ok);
 }
 .panel[data-state="ok"] .status { color: var(--ok); }
+
+/* Degraded: object storage is out of use and orders are going to the failover array. Archiving
+   is working, but this is not the primary path. */
+.panel[data-state="degraded"] {
+  background: var(--warn-ground);
+  border-color: var(--warn);
+}
+.panel[data-state="degraded"] .status { color: var(--warn); }
 
 /* Fallback: the flag is gone and the code fell back to a decommissioned disk array. */
 .panel[data-state="fallback"] {

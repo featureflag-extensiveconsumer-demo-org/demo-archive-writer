@@ -30,8 +30,13 @@ const failoverFlagKey = params.get('failover')
 
 flagEl.textContent = archiveFlagKey;
 
+const TITLES = {
+  ok: 'Order archive writer',
+  degraded: 'Order archive writer - failover array'
+};
+
 function render(state) {
-  panel.dataset.state = state.healthy ? 'ok' : 'fallback';
+  panel.dataset.state = state.mode;
   statusEl.textContent = state.headline;
   detailEl.textContent = state.detail;
   archivedEl.textContent = count(state.archived);
@@ -39,9 +44,7 @@ function render(state) {
   clockLabelEl.textContent = state.clockLabel;
   clockEl.textContent = duration(state.clock);
   targetEl.textContent = `writing to ${state.target}`;
-  document.title = state.healthy
-    ? 'Order archive writer'
-    : `BREACH RISK - ${orders(state.queued)} queued`;
+  document.title = TITLES[state.mode] || `BREACH RISK - ${orders(state.queued)} queued`;
 }
 
 // The writer starts once, whether the rollout arrived or the connection failed. Starting twice

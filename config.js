@@ -16,7 +16,10 @@ export const FLAGS = {
 
 export const ARCHIVE_TARGETS = {
   objectStorageBucket: 'orders-archive-eu',
-  diskArrayName: 'arch-array-01'
+  // The array this service was written against, retired with the data centre it stood in.
+  primaryDiskArray: 'arch-array-01',
+  // Its replacement. Reached only once the failover rollout is complete.
+  failoverDiskArray: 'arch-array-07'
 };
 
 // One batch of closed orders every two seconds.

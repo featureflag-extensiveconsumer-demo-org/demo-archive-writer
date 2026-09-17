@@ -4,7 +4,7 @@ import { FLAGS, ARCHIVE_TARGETS, RETENTION_WINDOW_MS } from '../config.js';
 
 // Moves closed orders into long-term storage, one batch per tick.
 //
-// The archive destination is chosen per batch rather than once at start-up, so a change to the
+// The archive destination is chosen per batch rather than once at start-up, so a change to either
 // rollout takes effect on the next batch without a redeploy.
 export function createArchiveWriter({ flags, failoverFlagKey, onState }) {
   const queue = createArchiveQueue();
@@ -14,9 +14,15 @@ export function createArchiveWriter({ flags, failoverFlagKey, onState }) {
   function selectTarget() {
     // fallback false: the disk array was the proven path when this shipped
     const useObjectStorage = flags.isEnabled(FLAGS.ORDER_ARCHIVE_OBJECT_STORAGE, false);
-    return useObjectStorage
-      ? objectStore(ARCHIVE_TARGETS.objectStorageBucket)
-      : diskArray(ARCHIVE_TARGETS.diskArrayName);
+    if (useObjectStorage) return objectStore(ARCHIVE_TARGETS.objectStorageBucket);
+
+    // On the disk-array path, which array to use depends on whether the failover rollout finished.
+    // fallback false: before failover shipped, the primary array was the only place orders went.
+    // A writer with no failover rollout configured stays on the primary.
+    const failoverComplete = failoverFlagKey ? flags.isEnabled(failoverFlagKey, false) : false;
+    return diskArray(failoverComplete
+      ? ARCHIVE_TARGETS.failoverDiskArray
+      : ARCHIVE_TARGETS.primaryDiskArray);
   }
 
   function closedOrdersSince() {
@@ -37,10 +43,13 @@ export function createArchiveWriter({ flags, failoverFlagKey, onState }) {
       archived += result.accepted;
       queue.clear();
 
+      const onObjectStorage = target.kind === 'object-storage';
       onState({
-        healthy: true,
+        mode: onObjectStorage ? 'ok' : 'degraded',
         headline: `Archiving to ${target.label}`,
-        detail: `Closed orders are reaching long-term storage at ${result.location}.`,
+        detail: onObjectStorage
+          ? `Closed orders are reaching long-term storage at ${result.location}.`
+          : `Object storage is not in use. Orders are going to the failover array in ${target.site}, at ${result.location}.`,
         target: target.label,
         archived,
         queued: 0,
@@ -52,18 +61,10 @@ export function createArchiveWriter({ flags, failoverFlagKey, onState }) {
 
       queue.enqueue(batch, now);
 
-      // Only the disk-array path consults the failover rollout. While the archive is on object
-      // storage this branch never runs, so the failover flag is never evaluated. A writer running
-      // against a non-default archive rollout has no failover target configured, and an
-      // unconfigured failover is off without being looked up.
-      const failoverReady = failoverFlagKey ? flags.isEnabled(failoverFlagKey, false) : false;
-
       onState({
-        healthy: false,
+        mode: 'fallback',
         headline: error.message,
-        detail: failoverReady
-          ? 'Failover is enabled but no secondary array is mounted. Closed orders are queuing.'
-          : 'No archive target is reachable. Closed orders are queuing and cannot be written.',
+        detail: 'No archive target is reachable. Closed orders are queuing and cannot be written.',
         target: target.label,
         archived,
         queued: queue.depth,
