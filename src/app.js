@@ -16,10 +16,17 @@ const flagEl = document.getElementById('flagline');
 
 // The rollout flag can be pointed at another key without a redeploy, so a rehearsal or a reserve
 // flag can drive the same writer.
-const requestedFlag = new URLSearchParams(window.location.search).get('flag');
+const params = new URLSearchParams(window.location.search);
+const requestedFlag = params.get('flag');
 const archiveFlagKey = requestedFlag || FLAGS.ORDER_ARCHIVE_OBJECT_STORAGE;
 const resolveKey = (logical) =>
   logical === FLAGS.ORDER_ARCHIVE_OBJECT_STORAGE ? archiveFlagKey : logical;
+
+// The failover rollout is configured alongside the archive rollout. Pointing the writer at another
+// archive flag without naming a failover flag leaves failover unconfigured, and an unconfigured
+// failover is never looked up.
+const failoverFlagKey = params.get('failover')
+  || (requestedFlag ? null : FLAGS.ARCHIVE_ARRAY_FAILOVER);
 
 flagEl.textContent = archiveFlagKey;
 
@@ -43,7 +50,7 @@ let started = false;
 function startWriter() {
   if (started) return;
   started = true;
-  const writer = createArchiveWriter({ flags, onState: render });
+  const writer = createArchiveWriter({ flags, failoverFlagKey, onState: render });
   writer.tick(Date.now());
   setInterval(() => writer.tick(Date.now()), TICK_MS);
 }

@@ -6,7 +6,7 @@ import { FLAGS, ARCHIVE_TARGETS, RETENTION_WINDOW_MS } from '../config.js';
 //
 // The archive destination is chosen per batch rather than once at start-up, so a change to the
 // rollout takes effect on the next batch without a redeploy.
-export function createArchiveWriter({ flags, onState }) {
+export function createArchiveWriter({ flags, failoverFlagKey, onState }) {
   const queue = createArchiveQueue();
   let archived = 0;
   let startedAt = null;
@@ -53,8 +53,10 @@ export function createArchiveWriter({ flags, onState }) {
       queue.enqueue(batch, now);
 
       // Only the disk-array path consults the failover rollout. While the archive is on object
-      // storage this branch never runs, so the failover flag is never evaluated.
-      const failoverReady = flags.isEnabled(FLAGS.ARCHIVE_ARRAY_FAILOVER, false);
+      // storage this branch never runs, so the failover flag is never evaluated. A writer running
+      // against a non-default archive rollout has no failover target configured, and an
+      // unconfigured failover is off without being looked up.
+      const failoverReady = failoverFlagKey ? flags.isEnabled(failoverFlagKey, false) : false;
 
       onState({
         healthy: false,
