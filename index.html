@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order archive writer</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<main class="panel" id="panel" data-state="starting">
+
+  <header class="bar">
+    <span class="service">order-archive-writer-01</span>
+    <span class="spacer"></span>
+    <span class="link" id="link">connecting</span>
+  </header>
+
+  <p class="status" id="status">Starting the archive writer</p>
+
+  <p class="detail" id="detail">Waiting for the first batch of closed orders.</p>
+
+  <dl class="metrics">
+    <div><dt>Archived</dt><dd id="archived">0</dd></div>
+    <div><dt>Queued</dt><dd id="queued">0</dd></div>
+    <div><dt id="clock-label">Uptime</dt><dd id="clock">00:00:00</dd></div>
+  </dl>
+
+  <footer class="foot">
+    <span id="target">target unknown</span>
+    <span class="spacer"></span>
+    <span id="flagline"></span>
+  </footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/launchdarkly-js-client-sdk@3.9.5/dist/ldclient.min.js"></script>
+<script type="module" src="./src/app.js"></script>
+
+</body>
+</html>
